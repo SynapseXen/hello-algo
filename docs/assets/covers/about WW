@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>跳一跳游戏</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #f0f0f0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            font-family: Arial, sans-serif;
+        }
+        canvas {
+            background-color: white;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        #score {
+            position: absolute;
+            top: 20px;
+            font-size: 24px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div id="score">分数: 0</div>
+    <canvas id="gameCanvas" width="375" height="667"></canvas>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreElement = document.getElementById('score');
+        
+        // 游戏参数
+        const playerSize = 30;
+        const platformWidth = 100;
+        const platformHeight = 20;
+        const gravity = 0.5;
+        const jumpForce = 12;
+        
+        // 游戏状态
+        let score = 0;
+        let isGameOver = false;
+        let platforms = [];
+        let player = {
+            x: canvas.width / 2 - playerSize / 2,
+            y: canvas.height / 2,
+            width: playerSize,
+            height: playerSize,
+            velocityY: 0,
+            isJumping: false
+        };
+        
+        // 初始化平台
+        function initPlatforms() {
+            platforms = [];
+            // 初始平台
+            platforms.push({
+                x: canvas.width / 2 - platformWidth / 2,
+                y: canvas.height - 50,
+                width: platformWidth,
+                height: platformHeight,
+                color: '#4CAF50'
+            });
+            
+            // 随机生成一些平台
+            for (let i = 0; i < 5; i++) {
+                createRandomPlatform();
+            }
+        }
+        
+        // 创建随机平台
+        function createRandomPlatform() {
+            const lastPlatform = platforms[platforms.length - 1];
+            const minX = 50;
+            const maxX = canvas.width - platformWidth - 50;
+            const x = Math.random() * (maxX - minX) + minX;
+            const y = lastPlatform.y - (Math.random() * 100 + 150);
+            
+            platforms.push({
+                x: x,
+                y: y,
+                width: platformWidth,
+                height: platformHeight,
+                color: getRandomColor()
+            });
+        }
+        
+        // 获取随机颜色
+        function getRandomColor() {
+            const colors = ['#FF5252', '#FF4081', '#E040FB', '#7C4DFF', '#536DFE', '#448AFF', '#40C4FF', '#18FFFF', '#64FFDA', '#69F0AE', '#B2FF59', '#EEFF41', '#FFFF00', '#FFD740', '#FFAB40', '#FF6E40'];
+            return colors[Math.floor(Math.random() * colors.length)];
+        }
+        
+        // 更新游戏状态
+        function update() {
+            if (isGameOver) return;
+            
+            // 更新玩家位置
+            player.y += player.velocityY;
+            player.velocityY += gravity;
+            
+            // 检查是否落在平台上
+            let onPlatform = false;
+            for (let i = 0; i < platforms.length; i++) {
+                const platform = platforms[i];
+                
+                // 检测碰撞
+                if (
+                    player.x < platform.x + platform.width &&
+                    player.x + player.width > platform.x &&
+                    player.y + player.height >= platform.y &&
+                    player.y + player.height <= platform.y + platform.height / 2 &&
+                    player.velocityY > 0
+                ) {
+                    onPlatform = true;
+                    player.y = platform.y - player.height;
+                    player.velocityY = 0;
+                    player.isJumping = false;
+                    
+                    // 如果落在新平台上，增加分数
+                    if (i === platforms.length - 1) {
+                        score += 10;
+                        scoreElement.textContent = `分数: ${score}`;
+                        createRandomPlatform();
+                    }
+                }
+            }
+            
+            // 如果玩家掉出屏幕底部，游戏结束
+            if (player.y > canvas.height) {
+                isGameOver = true;
+                alert(`游戏结束！你的分数是: ${score}`);
+            }
+            
+            // 如果玩家接近屏幕顶部，移动平台和玩家向下
+            if (player.y < canvas.height / 3) {
+                const diff = canvas.height / 3 - player.y;
+                player.y += diff;
+                
+                for (let i = 0; i < platforms.length; i++) {
+                    platforms[i].y += diff;
+                    
+                    // 移除屏幕底部的平台
+                    if (platforms[i].y > canvas.height) {
+                        platforms.splice(i, 1);
+                        i--;
+                    }
+                }
+            }
+        }
+        
+        // 绘制游戏
+        function draw() {
+            // 清空画布
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // 绘制背景
+            ctx.fillStyle = '#f0f0f0';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // 绘制平台
+            for (const platform of platforms) {
+                ctx.fillStyle = platform.color;
+                ctx.fillRect(platform.x, platform.y, platform.width, platform.height);
+                
+                // 添加平台阴影效果
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+                ctx.fillRect(platform.x, platform.y + platform.height, platform.width, 5);
+            }
+            
+            // 绘制玩家
+            ctx.fillStyle = '#2196F3';
+            ctx.beginPath();
+            ctx.arc(
+                player.x + player.width / 2,
+                player.y + player.height / 2,
+                player.width / 2,
+                0,
+                Math.PI * 2
+            );
+            ctx.fill();
+            
+            // 添加玩家阴影效果
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+            ctx.beginPath();
+            ctx.ellipse(
+                player.x + player.width / 2,
+                player.y + player.height + 5,
+                player.width / 2,
+                5,
+                0,
+                0,
+                Math.PI * 2
+            );
+            ctx.fill();
+        }
+        
+        // 游戏循环
+        function gameLoop() {
+            update();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+        
+        // 跳跃
+        function jump() {
+            if (!player.isJumping) {
+                player.velocityY = -jumpForce;
+                player.isJumping = true;
+            }
+        }
+        
+        // 重置游戏
+        function resetGame() {
+            score = 0;
+            scoreElement.textContent = `分数: ${score}`;
+            isGameOver = false;
+            player = {
+                x: canvas.width / 2 - playerSize / 2,
+                y: canvas.height / 2,
+                width: playerSize,
+                height: playerSize,
+                velocityY: 0,
+                isJumping: false
+            };
+            initPlatforms();
+        }
+        
+        // 事件监听
+        canvas.addEventListener('click', jump);
+        canvas.addEventListener('touchstart', jump);
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space') {
+                jump();
+            }
+            if (e.code === 'Enter' && isGameOver) {
+                resetGame();
+            }
+        });
+        
+        // 开始游戏
+        initPlatforms();
+        gameLoop();
+    </script>
+</body>
+</html>
